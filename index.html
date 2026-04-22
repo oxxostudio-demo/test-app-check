@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<!--
+Created using JS Bin
+http://jsbin.com
+
+Copyright (c) 2026 by anonymous (http://jsbin.com/garomatuja/3/edit)
+
+Released under the MIT license: http://jsbin.mit-license.org
+-->
+<meta name="robots" content="noindex">
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Firebase RTDB 筆記本</title>
+</head>
+<body>
+
+    <h2>資料提交</h2>
+    
+    <textarea id="messageInput" placeholder="請輸入內容..." rows="5" cols="40"></textarea>
+    <br><br>
+    
+    <button id="submitBtn" disabled>送出</button>
+    <button id="resetBtn" disabled>重填</button>
+
+    <hr>
+
+    <h3>已儲存的資料</h3>
+    <ul id="dataList">
+        </ul>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+        import { getDatabase, ref, push, onValue } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
+        import { initializeAppCheck, ReCaptchaV3Provider } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app-check.js";
+
+        // --- 你的 Firebase 配置 ---
+        const firebaseConfig = {
+  apiKey: "AIzaSyCxLLyxAN4nMl82fFlHnXcVLU5PaMWcIm4",
+  authDomain: "test-b5a28.firebaseapp.com",
+  databaseURL: "https://test-b5a28-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId: "test-b5a28",
+  storageBucket: "test-b5a28.firebasestorage.app",
+  messagingSenderId: "142279389930",
+  appId: "1:142279389930:web:8c35b2b07fe4ee1d485d93"
+        };
+
+        // 初始化 Firebase
+        const app = initializeApp(firebaseConfig);
+        const db = getDatabase(app);
+
+        // 初始化 App Check (reCAPTCHA v3)
+        // 請記得將 siteKey 替換為你在 reCAPTCHA 後台申請的金鑰
+        initializeAppCheck(app, {
+            provider: new ReCaptchaV3Provider('6Lc8w8MsAAAAAKOEkaOT_frEvSZccSG6DxP4OBpP'),
+            isTokenAutoRefreshEnabled: true
+        });
+
+        // 選取 DOM 元素
+        const messageInput = document.getElementById('messageInput');
+        const submitBtn = document.getElementById('submitBtn');
+        const resetBtn = document.getElementById('resetBtn');
+        const dataList = document.getElementById('dataList');
+
+        // 監聽輸入框內容，控制按鈕啟用狀態
+        messageInput.addEventListener('input', () => {
+            const hasValue = messageInput.value.trim().length > 0;
+            submitBtn.disabled = !hasValue;
+            resetBtn.disabled = !hasValue;
+        });
+
+        // 「送出」按鈕邏輯
+        submitBtn.addEventListener('click', () => {
+            const text = messageInput.value;
+            const messagesRef = ref(db, 'messages');
+            
+            push(messagesRef, {
+                content: text,
+                timestamp: Date.now()
+            }).then(() => {
+                messageInput.value = ''; // 清空輸入
+                submitBtn.disabled = true;
+                resetBtn.disabled = true;
+            }).catch((error) => {
+                console.error("儲存失敗:", error);
+                alert("儲存失敗，請檢查 App Check 或資料庫權限。");
+            });
+        });
+
+        // 「重填」按鈕邏輯
+        resetBtn.addEventListener('click', () => {
+            messageInput.value = '';
+            submitBtn.disabled = true;
+            resetBtn.disabled = true;
+        });
+
+        // 即時顯示資料清單
+        const messagesRef = ref(db, 'messages');
+        onValue(messagesRef, (snapshot) => {
+            dataList.innerHTML = ''; // 清空舊列表
+            snapshot.forEach((childSnapshot) => {
+                const data = childSnapshot.val();
+                const li = document.createElement('li');
+                li.textContent = data.content;
+                dataList.appendChild(li);
+            });
+        });
+    </script>
+
+</body>
+</html>
